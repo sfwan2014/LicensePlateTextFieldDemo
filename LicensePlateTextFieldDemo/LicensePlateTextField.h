@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString *text;
 @property (nonatomic, strong) UIFont *font;
 @property (nonatomic, strong) UIColor *textColor;
-
+@property (nonatomic, assign) NSInteger curentIndex; // 游标位置
 
 @end
 

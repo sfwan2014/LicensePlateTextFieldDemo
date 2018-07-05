@@ -65,7 +65,7 @@
     _placeholderColor = [UIColor grayColor];
     _pointColor = [UIColor redColor];
     _borderWidth = 1;
-    _curentIndex = 0;
+    _curentIndex = -1;
     
     _contentArray = [NSMutableArray arrayWithCapacity:kMaxTextLength];
     for (int i = 0; i < kMaxTextLength; i++) {
@@ -77,6 +77,10 @@
 }
 
 -(NSString *)text{
+    
+    for (LicensePlateContent *content in _contentArray) {
+        [_innerText appendString:content.text];
+    }
     return _innerText;
 }
 
@@ -85,10 +89,19 @@
         text = @"";
     }
     _innerText = [[NSMutableString alloc] initWithString:text];
+    
+    for (int i = 0; i < text.length; i++) {
+        NSString *word = [text substringWithRange:NSMakeRange(i, 1)];
+        if (i < _contentArray.count) {
+            LicensePlateContent *content = _contentArray[i];
+            content.text = word;
+        }
+    }
+    [self setNeedsDisplay];
 }
 
 - (BOOL)hasText{
-    return _innerText.length>0;
+    return self.text.length>0;
 }
 - (void)insertText:(NSString *)text{
     if (text.length > 1) {

@@ -25,7 +25,9 @@
 -(void)viewDidAppear:(BOOL)animated{
     [super viewDidAppear:animated];
     
+    self.textField.curentIndex = 2;
     [self.textField becomeFirstResponder];
+    self.textField.text = @"粤B62AF2";
     
 }
 
