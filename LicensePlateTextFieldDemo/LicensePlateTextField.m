@@ -26,20 +26,33 @@
 @end
 
 @implementation LicensePlateTextField{
-    NSMutableString *_innerText; // 输入的文本
     UIColor *_borderColor; // 边框颜色
     UIColor *_selectedColor;
     CGFloat _borderWidth; // 边框线条宽度
+    CGFloat _cornerRadius; // 圆角半径
     UIColor *_pointColor; // 点的颜色
     BOOL _isSecureTextEntry; // 是否是安全输入模式
     
-    NSInteger _curentIndex;
+    NSInteger _curentIndex; // x选择样式的下标
     
-    NSMutableArray *_contentArray;
+    NSMutableArray *_contentArray; // 文本内容容器
     
-    UIColor *_placeholderColor;
+    UIColor *_placeholderColor; // 新能源提示字体颜色
+    
+    CGFloat _pointGap; // 点位置的间距
+    CGFloat _normalGap; // 普通的间距
+    CGFloat _lastGap; // 新能源 前面的间距
 }
 
+- (void)dealloc
+{
+    
+}
+
+-(void)removeFromSuperview{
+    [super removeFromSuperview];
+    
+}
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -59,14 +72,13 @@
     self.backgroundColor = [UIColor clearColor];
     self.textColor = [UIColor blackColor];
     self.font = [UIFont systemFontOfSize:14];
-    _innerText = [NSMutableString string];
     _borderColor = [UIColor colorWithRed:102/255.0 green:102/255.0 blue:102/255.0 alpha:1];
     _selectedColor = [UIColor colorWithRed:76/255.0 green:175/255.0 blue:80/255.0 alpha:1];
     _placeholderColor = [UIColor grayColor];
     _pointColor = [UIColor redColor];
     _borderWidth = 1;
-    _curentIndex = -1;
-    
+    _curentIndex = -1; // 初始值
+    _cornerRadius = 2;
     _contentArray = [NSMutableArray arrayWithCapacity:kMaxTextLength];
     for (int i = 0; i < kMaxTextLength; i++) {
         LicensePlateContent *content = [[LicensePlateContent alloc] init];
@@ -74,21 +86,49 @@
         content.index = i;
         [_contentArray addObject:content];
     }
+    
+    _pointGap = 14;
+    _normalGap = 2;
+    _lastGap = 3;
+}
+
+-(void)setCurentIndex:(NSInteger)curentIndex{
+    _curentIndex = curentIndex;
+    
+    [self setNeedsDisplay];
 }
 
 -(NSString *)text{
-    
+    NSMutableString *innerText = [NSMutableString string];
     for (LicensePlateContent *content in _contentArray) {
-        [_innerText appendString:content.text];
+        [innerText appendString:content.text];
     }
-    return _innerText;
+    return innerText;
 }
+
+-(NSString *)numString{
+    NSMutableString *numStr = [NSMutableString string];
+    for (int i = 1; i < _contentArray.count; i++) {
+        LicensePlateContent *content = _contentArray[i];
+        [numStr appendString:content.text];
+    }
+    return numStr;
+}
+
+-(NSString *)sampleProvince{
+    LicensePlateContent *content = _contentArray[0];
+    return content.text;
+}
+
 
 -(void)setText:(NSString *)text{
     if (text == nil) {
         text = @"";
     }
-    _innerText = [[NSMutableString alloc] initWithString:text];
+    
+    for (LicensePlateContent *content in _contentArray) {
+        content.text = @"";
+    }
     
     for (int i = 0; i < text.length; i++) {
         NSString *word = [text substringWithRange:NSMakeRange(i, 1)];
@@ -110,11 +150,11 @@
     
     if ([text isEqualToString:@"\n"]) {
         [self resignFirstResponder];
-        _curentIndex = -1;
+        _curentIndex = -1;// 恢复初始值
         return;
     }
     if (_curentIndex >= kMaxTextLength) {
-        _curentIndex = -1;
+        _curentIndex = -1;// 恢复初始值
         [self resignFirstResponder];
         return;
     }
@@ -133,7 +173,7 @@
     content.text = [text uppercaseString];
     _curentIndex ++;
     if (_curentIndex >= kMaxTextLength-1) {
-        _curentIndex = -1;
+        _curentIndex = -1;// 恢复初始值
         [self resignFirstResponder];
     }
     
@@ -165,16 +205,6 @@
     return YES;
 }
 
--(BOOL)becomeFirstResponder{
-    if (_curentIndex == 0) {
-        [self showProvinceKeyboard];
-        return NO;
-    } else {
-        [ProvinceSampleKeyboardView hideWithAnimation:NO];
-        return [super becomeFirstResponder];
-    }
-}
-
 -(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event{
     
 }
@@ -193,10 +223,12 @@
     }
     if (_curentIndex == 0) {
         [self showProvinceKeyboard];
-    } else {
+    } else if(_curentIndex >0 && _curentIndex < kMaxTextLength){
         if (![self isFirstResponder]) {
             [self becomeFirstResponder];
         }
+    } else {
+        
     }
 }
 
@@ -204,10 +236,22 @@
     
 }
 
+-(BOOL)becomeFirstResponder{
+    if (_curentIndex == 0) {
+        [self showProvinceKeyboard];
+        return NO;
+    } else {
+        [ProvinceSampleKeyboardView hideWithAnimation:NO];
+        return [super becomeFirstResponder];
+    }
+}
+
 - (BOOL)resignFirstResponder{
     if (self.isFirstResponder) {
         // textField did end edit
     }
+    [ProvinceSampleKeyboardView hideWithAnimation:NO];
+    _curentIndex = -1; // 恢复初始值
     [self setNeedsDisplay];
     return [super resignFirstResponder];
 }
@@ -226,6 +270,7 @@
 // 显示省份简称键盘
 -(void)showProvinceKeyboard{
     [self resignFirstResponder];
+    _curentIndex = 0;
     ProvinceSampleKeyboardView *keyboard = [ProvinceSampleKeyboardView showWidthAnimation:YES];
     keyboard.block = ^(id obj) {
         NSLog(@"%@", obj);
@@ -258,8 +303,8 @@
         CGRect gridRect = [self subRectFrom:rect widthIndex:i];
         [self drawBorder:gridRect widthIndex:i];
         if (i == 1) {
-            CGFloat d2 = 20;
-            CGFloat pointRadius = 5.0;
+            CGFloat d2 = _pointGap;
+            CGFloat pointRadius = 4.0;
             CGFloat x = gridRect.origin.x+gridRect.size.width+(d2-pointRadius)/2.0;
             CGFloat y = (rect.size.height - pointRadius)/2.0;
             CGRect pointRect = CGRectMake(x, y, pointRadius, pointRadius);
@@ -280,7 +325,7 @@
 
 // 画边框
 -(void)drawBorder:(CGRect)rect widthIndex:(NSInteger)index{
-    CGFloat cornerRadius = 2.0;
+    CGFloat cornerRadius = _cornerRadius;
     CGFloat originX = rect.origin.x;
     CGFloat width = rect.size.width;
     CGFloat height = rect.size.height;
@@ -384,7 +429,7 @@
                     CGFloat centerX = subRect.size.width/2.0+subRect.origin.x;
                     CGFloat centerY = subRect.size.height/2.0;
                     // 十字
-                    CGFloat lineWidth = 8;
+                    CGFloat lineWidth = 10;
                     CGFloat lx = (subRect.size.width - lineWidth)/2.0+subRect.origin.x;
                     
                     CGFloat ly = centerY-lineWidth;
@@ -400,7 +445,7 @@
                     CGContextStrokePath(context);
                     
                     NSString *text = @"新能源";
-                    CGFloat fontSize = 11;
+                    CGFloat fontSize = 10;
                     if (subRect.size.width<=27) {
                         fontSize = 7;
                     } else if (subRect.size.width < 36){
@@ -451,9 +496,9 @@
 
 -(CGRect)subRectFrom:(CGRect)rect widthIndex:(NSInteger)index{
     
-    CGFloat d = 8;
-    CGFloat d1 = 12;
-    CGFloat d2 = 20;
+    CGFloat d = _normalGap;
+    CGFloat d1 = _lastGap;
+    CGFloat d2 = _pointGap;
     
     CGFloat width = rect.size.width;
     CGFloat height = rect.size.height;
